@@ -1,26 +1,23 @@
 import fs from "fs";
 import path from "path";
+import matter from "gray-matter";
 import Layout from "@/components/Layout";
 import Post from "@/components/Post";
-import { POST_PER_PAGE } from "@/config/index";
-import Pagination from "@/components/Pagination";
 import { getPosts } from "@/lib/posts";
 import CategoryList from "@/components/CategoryList";
 
-export default function BlogPage({ posts, numPages, currentPage, categories }) {
+export default function CategoryBlogPage({ posts, categoryName, categories }) {
   return (
-    <Layout>
+    <Layout title={`${categoryName} Posts`}>
       <div className="flex justify-between">
         <div className="w-3/4 mr-10">
-          <h1 className="text-5xl border-b-4 p-5 font-bold">Blog</h1>
+          <h1 className="text-5xl border-b-4 p-5 font-bold">Posts on {categoryName}</h1>
 
           <div className="grid md:grid-cols-2 gap-5">
             {posts.map((post, index) => (
               <Post key={index} post={post} />
             ))}
           </div>
-
-          <Pagination currentPage={currentPage} numPages={numPages} />
         </div>
 
         <div className="w-1/4">
@@ -34,15 +31,17 @@ export default function BlogPage({ posts, numPages, currentPage, categories }) {
 export async function getStaticPaths() {
   const files = fs.readdirSync(path.join("posts"));
 
-  const numPages = Math.ceil(files.length / POST_PER_PAGE);
+  const categories = files.map((filename) => {
+    const markdownWithMeta = fs.readFileSync(path.join("posts", filename), "utf-8");
 
-  let paths = [];
+    const { data: frontmatter } = matter(markdownWithMeta);
 
-  for (let i = 1; i <= numPages; i++) {
-    paths.push({
-      params: { page_index: i.toString() },
-    });
-  }
+    return frontmatter.category.toLowerCase();
+  });
+
+  const paths = categories.map((category) => ({
+    params: { category_name: category },
+  }));
 
   return {
     paths,
@@ -50,11 +49,7 @@ export async function getStaticPaths() {
   };
 }
 
-export async function getStaticProps({ params }) {
-  const page = parseInt((params && params.page_index) || 1);
-
-  const files = fs.readdirSync(path.join("posts"));
-
+export async function getStaticProps({ params: { category_name } }) {
   const posts = getPosts();
 
   // Get categories for sidebar
@@ -62,11 +57,12 @@ export async function getStaticProps({ params }) {
 
   const uniqueCategories = [...new Set(categories)];
 
-  const numPages = Math.ceil(files.length / POST_PER_PAGE);
-  const pageIndex = page - 1;
-  const orderedPosts = posts.slice(pageIndex * POST_PER_PAGE, (pageIndex + 1) * POST_PER_PAGE);
+  //   filter post by category
+  const categoryPosts = posts.filter(
+    (post) => post.frontmatter.category.toLowerCase() === category_name
+  );
 
   return {
-    props: { posts: orderedPosts, numPages, currentPage: page, categories: uniqueCategories },
+    props: { posts: categoryPosts, categoryName: category_name, categories: uniqueCategories },
   };
 }

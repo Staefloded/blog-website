@@ -1,14 +1,34 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
-import Layout from "../../components/Layout";
+import Layout from "@/components/Layout";
 import Link from "next/link";
-import CategoryLabel from "../../components/CategoryLabel";
+import CategoryLabel from "@/components/CategoryLabel";
 import Image from "next/image";
 import marked from "marked";
+import { buildUrl } from "cloudinary-build-url";
 
-export default function PostPage({ frontmatter, content, slug }) {
-  const { title, category, date, cover_image, author, author_image } = frontmatter;
+export default function PostPage({
+  frontmatter: { title, category, date, cover_image, author, author_image },
+  content,
+  slug,
+}) {
+  const url = buildUrl(cover_image, {
+    cloud: {
+      cloudName: "staefloded",
+    },
+  });
+
+  const blurUrl = buildUrl(cover_image, {
+    cloud: {
+      cloudName: "staefloded",
+    },
+    transformations: {
+      effect: "blur:1000",
+      quality: 1,
+    },
+  });
+
   return (
     <Layout title={title}>
       <Link href="/blog">
@@ -22,11 +42,13 @@ export default function PostPage({ frontmatter, content, slug }) {
         </div>
 
         <Image
-          src={cover_image}
+          src={url}
           layout="responsive"
           width={300}
           height={200}
           alt=""
+          blurDataURL={blurUrl}
+          placeholder="blur"
           objectFit="cover"
           className="w-full rounded"
         />
@@ -66,7 +88,7 @@ export async function getStaticPaths() {
 
   return {
     paths,
-    fallback: true,
+    fallback: false,
   };
 }
 
